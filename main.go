@@ -35,6 +35,7 @@ func main () {
   e := echo.New()
 
   e.GET("/cities/:cityName", getCityInfoHandler)
+  e.POST("/post", addCityHandler)
 
   e.Start(":4000")
 }
@@ -49,4 +50,15 @@ func getCityInfoHandler(c echo.Context) error {
     return c.NoContent(http.StatusNotFound)
   }
   return c.JSON(http.StatusOK, city)
+}
+
+func addCityHandler(c echo.Context) error {
+  var data City
+  cityState := "INSERT INTO city (Name, CountryCode, District, Population) VALUES (?, ?, ?, ?)"
+
+  if err := c.Bind(&data); err != nil {
+    return c.JSON(http.StatusBadRequest, data)
+  }
+  db.Exec(cityState, data.Name, data.CountryCode, data.District, data.Population)
+  return c.JSON(http.StatusOK, data)
 }
