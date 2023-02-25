@@ -192,50 +192,41 @@ func getCityInfoHandler(c echo.Context) error {
 }
 
 func getAllCountryInfoHandler(c echo.Context) error {
-  var count int
-
-  err := db.Get(&count, "SELECT COUNT(*) FROM country")
+  countries := make([]*Country, 0, 0)
+  rows, err := db.Queryx("SELECT * FROM country")
   if err != nil {
     return c.String(http.StatusInternalServerError, fmt.Sprintf("db error: %v", err))
   }
 
-  existsEmptyName := false
-  country := make([]Country, count)
-  for i := 0; i < count; i++ {
-    db.Get(&country[i], "SELECT * FROM country LIMIT ?, 1", i)
-    if country[i].Name == "" {
-      existsEmptyName = true
-    }
-  }
-  if existsEmptyName == true {
-    return c.NoContent(http.StatusNotFound)
+  for rows.Next() {
+    country := Country{}
+    err := rows.StructScan(&country)
+      if err != nil {
+          log.Fatalln(err)
+      } 
+    countries = append(countries, &country)
   }
 
-  return c.JSON(http.StatusOK, country)
+  return c.JSON(http.StatusOK, countries)
 }
 
 func getCountryInfoHandler(c echo.Context) error {
   countryCode := c.Param("countryCode")
-  var count int
-
-  err := db.Get(&count, "SELECT COUNT(*) FROM city WHERE CountryCode=?", countryCode)
+  cities := make([]*City, 0, 0)
+  rows, err := db.Queryx("SELECT * FROM city WHERE CountryCode=?", countryCode)
   if err != nil {
     return c.String(http.StatusInternalServerError, fmt.Sprintf("db error: %v", err))
   }
-
-  existsEmptyName := false
-  city := make([]City, count)
-  for i := 0; i < count; i++ {
-    db.Get(&city[i], "SELECT * FROM city WHERE CountryCode=? LIMIT ?, 1", countryCode, i)
-    if city[i].Name == "" {
-      existsEmptyName = true
-    }
-  }
-  if existsEmptyName == true {
-    return c.NoContent(http.StatusNotFound)
+  for rows.Next() {
+    city := City{}
+    err := rows.StructScan(&city)
+      if err != nil {
+          log.Fatalln(err)
+      } 
+    cities = append(cities, &city)
   }
 
-  return c.JSON(http.StatusOK, city)
+  return c.JSON(http.StatusOK, cities)
 }
 
 func addCityHandler(c echo.Context) error {
