@@ -77,7 +77,7 @@ func main() {
   withLogin.Use(checkLogin)
   withLogin.GET("/cities/:cityName", getCityInfoHandler)
   withLogin.GET("/countries", getAllCountryInfoHandler)
-  withLogin.GET("/cities/:cityName", getCityInfoHandler)
+  withLogin.GET("/countries/:countryCode", getCountryInfoHandler)
   withLogin.GET("/whoami", getWhoAmIHandler)
   e.Start(":4000")
 }
@@ -192,10 +192,16 @@ func getCityInfoHandler(c echo.Context) error {
 }
 
 func getAllCountryInfoHandler(c echo.Context) error {
-  const n = 239
+  var count int
+
+  err := db.Get(&count, "SELECT COUNT(*) FROM country")
+  if err != nil {
+    return c.String(http.StatusInternalServerError, fmt.Sprintf("db error: %v", err))
+  }
+
   existsEmptyName := false
-  country := [n]Country{}
-  for i := 0; i < n; i++ {
+  country := make([]Country, count)
+  for i := 0; i < count; i++ {
     db.Get(&country[i], "SELECT * FROM country LIMIT ?, 1", i)
     if country[i].Name == "" {
       existsEmptyName = true
@@ -206,6 +212,30 @@ func getAllCountryInfoHandler(c echo.Context) error {
   }
 
   return c.JSON(http.StatusOK, country)
+}
+
+func getCountryInfoHandler(c echo.Context) error {
+  countryCode := c.Param("countryCode")
+  var count int
+
+  err := db.Get(&count, "SELECT COUNT(*) FROM city WHERE CountryCode=?", countryCode)
+  if err != nil {
+    return c.String(http.StatusInternalServerError, fmt.Sprintf("db error: %v", err))
+  }
+
+  existsEmptyName := false
+  city := make([]City, count)
+  for i := 0; i < count; i++ {
+    db.Get(&city[i], "SELECT * FROM city WHERE CountryCode=? LIMIT ?, 1", countryCode, i)
+    if city[i].Name == "" {
+      existsEmptyName = true
+    }
+  }
+  if existsEmptyName == true {
+    return c.NoContent(http.StatusNotFound)
+  }
+
+  return c.JSON(http.StatusOK, city)
 }
 
 func addCityHandler(c echo.Context) error {
